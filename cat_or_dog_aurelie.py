@@ -1,11 +1,13 @@
 from os import listdir, remove
 from os.path import isfile, join
-from tabnanny import verbose
 
 import numpy as np
 
 import matplotlib.pyplot as plt
+import seaborn as sn
 import cv2
+
+from sklearn.metrics import confusion_matrix
 
 from skimage.io import imread
 from skimage.transform import resize
@@ -16,6 +18,19 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
+
+
+def get_aurelie_full_test(label_codes, verbose=0):
+
+    aurelie_test = get_dir_files(r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set', include_sub_dir=1, verbose=verbose)
+    aurelie_y = []
+
+    for f in aurelie_test:
+        category=f.split('\\')[-1]
+        category=category.split('.')[0]
+        aurelie_y.append(label_codes.get(category,0))
+        
+    return aurelie_test, aurelie_y 
 
 def get_aurelie_test():
     aurelie_test = [r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (1).jpeg', 
@@ -94,6 +109,54 @@ def get_dataset(path, image_size=(256, 256), batch_size = 32, color_mode='graysc
         follow_links=False,
         crop_to_aspect_ratio=False,
     )
+
+def predict_img(model, img_test, target_size, labels,label_expected,verbose=0):
+    img = keras.preprocessing.image.load_img(img_test, target_size=target_size)
+    img_array = keras.preprocessing.image.img_to_array(img)
+    img_array = tf.expand_dims(img_array, 0)  # Create batch axis
+
+    predictions = model.predict(img_array)
+    predict_class = int(predictions[0][0])
+    label = labels[predict_class]
+
+    if label == label_expected:
+        return 1, predict_class
+    else:
+        if verbose:
+            plt.figure(figsize=(5, 5))
+            imread = cv2.imread(img_test)
+            plt.imshow(imread)
+            plt.title(f"{label_expected} expected (predict_class : {predict_class}), {label} predict")
+            plt.show()
+        else:
+            print(f"{label_expected} expected (predict_class : {predict_class}), {label} predict")
+        return 0, predict_class
+
+def predict_n_img(model, aurelie_test, aurelie_y,target_size, labels, verbose=0):
+    success = 0
+    fail = 0
+    fail_files = []
+    predictions = []
+
+    for i in range(0, len(aurelie_test)):
+        try:
+            found, predict_class = predict_img(model=model,img_test=aurelie_test[i], target_size=target_size, labels=labels,label_expected=labels[aurelie_y[i]],verbose=verbose-1)
+            predictions.append(predict_class)
+            
+            if found:
+                success += 1
+            else:
+                fail += 1
+                fail_files.append(aurelie_test[i])
+        except Exception as e:
+            print(i, aurelie_test[i], e)
+            predictions.append(3)
+
+    df_cm = confusion_matrix(aurelie_y, predictions)
+    if verbose:
+        sn.set(font_scale=1.4) # for label size
+        sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})
+    return df_cm, fail_files 
 
 
 def make_model(input_shape, num_classes, data_augmentation=None, nb_dim=3):
@@ -178,28 +241,33 @@ def show_learning_graph(history, epochs, verbose=0):
     plt.show()
 
 
-def corrupted_img(path, apply_remove=False, verbose=0):
-    num_skipped = 0
-    to_remove = []
-    for folder_name in get_sub_dir(path, verbose=verbose-1):
-        folder_path = join(path, folder_name)
-        for fname in listdir(folder_path):
-            fpath = join(folder_path, fname)
-            try:
-                fobj = open(fpath, "rb")
-                is_jfif = tf.compat.as_bytes("JFIF") in fobj.peek(10)
-            finally:
-                fobj.close()
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#                                              FILES UTILITIES
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-            if not is_jfif:
-                num_skipped += 1
-                to_remove.remove(fpath)
-                # Delete corrupted image
-                if apply_remove:
-                    remove(fpath)
+from tensorflow import compat
 
-    print("Deleted %d images" % num_skipped)
-    return to_remove
+def del_corrupt_img(dir_path, include_sub_dir=0, verbose=0):
+    
+    removed_files = []
+    fichiers = get_dir_files(dir_path=dir_path, include_sub_dir=include_sub_dir, verbose=verbose-1)
+        
+    for fname in fichiers:
+        is_jfif = False
+        fpath = join(dir_path, fname)
+        try:
+            fobj = open(fpath, "rb")
+            is_jfif = compat.as_bytes("JFIF") in fobj.peek(10)
+        finally:
+            fobj.close()
+
+        if not is_jfif:
+            removed_files.append(fpath)
+            # Delete corrupted image
+            remove(fpath)
+
+    if verbose: print(f"Deleted {len(removed_files)} images.")
+    return removed_files
 
 
 def get_sub_dir(dir_path, verbose=0):
@@ -229,6 +297,9 @@ def get_dir_files(dir_path, endwith=None, include_sub_dir=0, verbose=0):
             fichiers = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
     return fichiers
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#                                              IMG UTILITIES
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def show_hog(img_path, reduce_ratio=None, cmap="BrBG",orientations=9, pixels_per_cell=(8, 8)):
     img = imread(img_path)
@@ -268,6 +339,10 @@ def show_hog(img_path, reduce_ratio=None, cmap="BrBG",orientations=9, pixels_per
 
 if __name__ == "__main__":
     
+    removed_files = del_corrupt_img(r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\training_set', include_sub_dir=1, verbose=1)
+    removed_files = del_corrupt_img(r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\validation_set', include_sub_dir=1, verbose=1)
+
+
     print(get_dir_files(r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\training_set', include_sub_dir=1, verbose=0))
     # print(get_dir_files(r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset', include_sub_dir=1, verbose=0))
     print(get_sub_dir('dataset', verbose=0))
