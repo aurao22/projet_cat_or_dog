@@ -1,5 +1,6 @@
 from os import listdir, remove
 from os.path import isfile, join
+from tabnanny import verbose
 
 import numpy as np
 
@@ -14,6 +15,42 @@ from skimage import exposure
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+
+
+def get_aurelie_test():
+    aurelie_test = [r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (1).jpeg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (1).JPG', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (23).jpeg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (75).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (113).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (115).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (473).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (702).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (719).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (808).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (825).JPG', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (902).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\cat_dog.001 (721).jpg',
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\cat\cat.001 (1).jpeg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\cat\cat.001 (16).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\cat\cat.001 (18).jpg', 
+    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\cat\cat.001 (32).jpg']
+
+    aurelie_y = [1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,0, 0, 0, 0]
+    return aurelie_test, aurelie_y 
+
+def get_aurelie_full_test(label_codes, verbose=0):
+
+    aurelie_test = get_dir_files(r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set', include_sub_dir=1, verbose=verbose)
+    aurelie_y = []
+
+    for f in aurelie_test:
+        category=f.split('\\')[-1]
+        category=category.split('.')[0]
+        aurelie_y.append(label_codes.get(category,0))
+        
+    return aurelie_test, aurelie_y 
+
 
 def get_cv2_data(data_path, labels, image_size = (180, 180), verbose=0):
     data = [] 
