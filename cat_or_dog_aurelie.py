@@ -2,6 +2,7 @@ from os import listdir, remove
 from os.path import isfile, join
 
 import numpy as np
+import pandas as pd
 
 import matplotlib.pyplot as plt
 import seaborn as sn
@@ -18,145 +19,38 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#                                              MODELS
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+from keras.optimizers import Adam
 
+def create_and_fit_cnn1(target_size,training_set, validation_set, epochs=5, model_path="models/cnn1.pkl", verbose = 0):
+    cnn=tf.keras.models.Sequential()
 
-def get_aurelie_full_test(label_codes, verbose=0):
+    cnn.add(tf.keras.layers.Conv2D(filters=32,kernel_size=3,activation='relu',input_shape=[target_size[0],target_size[1],3]))
+    cnn.add(tf.keras.layers.MaxPool2D(pool_size=2,strides=2))
 
-    aurelie_test = get_dir_files(r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set', include_sub_dir=1, verbose=verbose)
-    aurelie_y = []
+    cnn.add(tf.keras.layers.Conv2D(filters=32,kernel_size=3,activation='relu'))
+    cnn.add(tf.keras.layers.MaxPool2D(pool_size=2,strides=2))
 
-    for f in aurelie_test:
-        category=f.split('\\')[-1]
-        category=category.split('.')[0]
-        aurelie_y.append(label_codes.get(category,0))
+    cnn.add(tf.keras.layers.Flatten())
+
+    cnn.add(tf.keras.layers.Dense(units=128,activation='relu'))
+
+    cnn.add(tf.keras.layers.Dense(units=1,activation='sigmoid'))
         
-    return aurelie_test, aurelie_y 
+    #  Compilation et entrainement
+    opt = Adam(learning_rate=0.000001)
+    cnn.compile(optimizer = opt , loss = 'binary_crossentropy' , metrics = ['accuracy'])
+    
+    # Entrainement
+    history_cnn = cnn.fit(training_set, epochs = epochs , validation_data=validation_set)
+    if model_path is not None:
+        cnn.save(model_path)
 
-def get_aurelie_test():
-    aurelie_test = [r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (1).jpeg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (1).JPG', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (23).jpeg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (75).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (113).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (115).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (473).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (702).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (719).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (808).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (825).JPG', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\dog.001 (902).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\dog\cat_dog.001 (721).jpg',
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\cat\cat.001 (1).jpeg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\cat\cat.001 (16).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\cat\cat.001 (18).jpg', 
-    r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set\cat\cat.001 (32).jpg']
-
-    aurelie_y = [1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,0, 0, 0, 0]
-    return aurelie_test, aurelie_y 
-
-def get_aurelie_full_test(label_codes, verbose=0):
-
-    aurelie_test = get_dir_files(r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set', include_sub_dir=1, verbose=verbose)
-    aurelie_y = []
-
-    for f in aurelie_test:
-        category=f.split('\\')[-1]
-        category=category.split('.')[0]
-        aurelie_y.append(label_codes.get(category,0))
-        
-    return aurelie_test, aurelie_y 
-
-
-def get_cv2_data(data_path, labels, image_size = (180, 180), verbose=0):
-    data = [] 
-    filenames = get_dir_files(dir_path=data_path, include_sub_dir=1, verbose=verbose-1)
-
-    for f_name in filenames:
-
-        try:
-            img_arr = cv2.imread(join(data_path, f_name))[...,::-1] #convert BGR to RGB format
-            resized_arr = cv2.resize(img_arr, image_size) # Reshaping images to preferred size
-            
-            # Affectation de la catégorie en se basant sur le nom du fichier
-            cat = 0
-            category=f_name.split('\\')[-1]
-            category=category.split('.')[0]
-            # On affecte le bon code de label
-            for i in range(1, len(labels)):
-                if labels[i] in category:
-                    cat = i
-                    break
-            data.append([resized_arr, cat])
-        except Exception as e:
-            print(e)
-    return np.array(data, dtype=object)
-
-
-def get_dataset(path, image_size=(256, 256), batch_size = 32, color_mode='grayscale'):
-    return tf.keras.utils.image_dataset_from_directory(
-        path,
-        labels='inferred',
-        label_mode='int',
-        class_names=None,
-        color_mode=color_mode, # "grayscale", "rgb", "rgba"
-        image_size=image_size,
-        batch_size=batch_size,
-        shuffle=True,
-        seed=None,
-        validation_split=None,
-        subset=None,
-        interpolation='bilinear',
-        follow_links=False,
-        crop_to_aspect_ratio=False,
-    )
-
-def predict_img(model, img_test, target_size, labels,label_expected,verbose=0):
-    img = keras.preprocessing.image.load_img(img_test, target_size=target_size)
-    img_array = keras.preprocessing.image.img_to_array(img)
-    img_array = tf.expand_dims(img_array, 0)  # Create batch axis
-
-    predictions = model.predict(img_array)
-    predict_class = int(predictions[0][0])
-    label = labels[predict_class]
-
-    if label == label_expected:
-        return 1, predict_class
-    else:
-        if verbose:
-            plt.figure(figsize=(5, 5))
-            imread = cv2.imread(img_test)
-            plt.imshow(imread)
-            plt.title(f"{label_expected} expected (predict_class : {predict_class}), {label} predict")
-            plt.show()
-        else:
-            print(f"{label_expected} expected (predict_class : {predict_class}), {label} predict")
-        return 0, predict_class
-
-def predict_n_img(model, aurelie_test, aurelie_y,target_size, labels, verbose=0):
-    success = 0
-    fail = 0
-    fail_files = []
-    predictions = []
-
-    for i in range(0, len(aurelie_test)):
-        try:
-            found, predict_class = predict_img(model=model,img_test=aurelie_test[i], target_size=target_size, labels=labels,label_expected=labels[aurelie_y[i]],verbose=verbose-1)
-            predictions.append(predict_class)
-            
-            if found:
-                success += 1
-            else:
-                fail += 1
-                fail_files.append(aurelie_test[i])
-        except Exception as e:
-            print(i, aurelie_test[i], e)
-            predictions.append(3)
-
-    df_cm = confusion_matrix(aurelie_y, predictions)
-    if verbose:
-        sn.set(font_scale=1.4) # for label size
-        sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})
-    return df_cm, fail_files 
+    show_learning_graph(history=history_cnn, epochs=epochs, verbose=verbose)
+    
+    return cnn
 
 
 def make_model(input_shape, num_classes, data_augmentation=None, nb_dim=3):
@@ -217,6 +111,64 @@ def make_model(input_shape, num_classes, data_augmentation=None, nb_dim=3):
     outputs = layers.Dense(units, activation=activation)(x)
     return keras.Model(inputs, outputs)
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#                                              PREDICTION
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def predict_img(model, img_test, target_size, labels,label_expected,verbose=0):
+    img = keras.preprocessing.image.load_img(img_test, target_size=target_size)
+    img_array = keras.preprocessing.image.img_to_array(img)
+    img_array = tf.expand_dims(img_array, 0)  # Create batch axis
+
+    predictions = model.predict(img_array)
+    predict_class = int(predictions[0][0])
+    label = labels[predict_class]
+
+    if label == label_expected:
+        return 1, predict_class
+    else:
+        if verbose:
+            plt.figure(figsize=(5, 5))
+            imread = cv2.imread(img_test)
+            plt.imshow(imread)
+            plt.title(f"{label_expected} expected (predict_class : {predict_class}), {label} predict")
+            plt.show()
+        else:
+            print(f"{label_expected} expected (predict_class : {predict_class}), {label} predict")
+        return 0, predict_class
+
+def predict_n_img(model, aurelie_test, aurelie_y,target_size, labels, verbose=0):
+    success = 0
+    fail = 0
+    fail_files = []
+    predictions = []
+
+    for i in range(0, len(aurelie_test)):
+        try:
+            found, predict_class = predict_img(model=model,img_test=aurelie_test[i], target_size=target_size, labels=labels,label_expected=labels[aurelie_y[i]],verbose=verbose-1)
+            predictions.append(predict_class)
+            
+            if found:
+                success += 1
+            else:
+                fail += 1
+                fail_files.append(aurelie_test[i])
+        except Exception as e:
+            print(i, aurelie_test[i], e)
+            predictions.append(3)
+
+    df_cm = confusion_matrix(aurelie_y, predictions)
+    if verbose:
+        sn.set(font_scale=1.4) # for label size
+        sn.heatmap(df_cm, annot=True, annot_kws={"size": 16})
+    return df_cm, fail_files 
+
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#                                              GRAPHES
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 def show_learning_graph(history, epochs, verbose=0):
     acc = history.history['accuracy']
@@ -239,7 +191,119 @@ def show_learning_graph(history, epochs, verbose=0):
     plt.legend(loc='upper right')
     plt.title('Training and Validation Loss')
     plt.show()
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#                                              LECTURE DES DATASETS
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+def get_aurelie_full_test(label_codes, verbose=0):
+
+    aurelie_test = get_dir_files(r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\aurelie_validation_set', include_sub_dir=1, verbose=verbose)
+    aurelie_y = []
+
+    for f in aurelie_test:
+        category=f.split('\\')[-1]
+        category=category.split('.')[0]
+        aurelie_y.append(label_codes.get(category,0))
+        
+    return aurelie_test, aurelie_y 
+
+
+def get_validation_img(label_codes, path=r'C:\Users\User\WORK\workspace-ia\PROJETS\projet_cat_or_dog\dataset\validation_set', verbose=0):
+
+    img_test = get_dir_files(path, include_sub_dir=1, verbose=verbose)
+    img_test = sorted(img_test)
+    img_y = []
+
+    for f in img_test:
+        category=f.split('\\')[-1]
+        category=category.split('.')[0]
+        img_y.append(label_codes.get(category,0))
+        
+    return img_test, img_y 
+
+from skimage import io
+
+def get_df_image(img_path_list, start_path, verbose=0):
+    categories_names = []
+    file_type = []
+    img_height = []
+    img_width = []
+    img_dims = []
+    img_datas = []
+
+    for f_name in img_path_list:
+        category=f_name.split('\\')[-1]
+        category=category.split('.')[0]
+        categories_names.append(category)
+        file_type.append(f_name.split('.')[-1])
+        coins_image = io.imread(join(start_path, f_name))
+        img_h = np.nan
+        img_w = np.nan
+        img_dim = 3
+
+        if coins_image is not None:
+            img_w = coins_image.shape[0]
+            img_h = coins_image.shape[1]
+            if len(coins_image.shape)==3:
+                img_dim = coins_image.shape[2]
+        
+        img_height.append(img_h)
+        img_width.append(img_w)
+        img_dims.append(img_dim)
+            
+    df=pd.DataFrame({
+        'file_name':f_name,
+        'file_type':file_type,
+        'category_name':categories_names,
+        'img_height':img_height,
+        'img_width':img_width,
+        'img_dim':img_dims,
+    })
+    return df
+
+
+def get_cv2_data(data_path, labels, image_size = (180, 180), verbose=0):
+    data = [] 
+    filenames = get_dir_files(dir_path=data_path, include_sub_dir=1, verbose=verbose-1)
+
+    for f_name in filenames:
+
+        try:
+            img_arr = cv2.imread(join(data_path, f_name))[...,::-1] #convert BGR to RGB format
+            resized_arr = cv2.resize(img_arr, image_size) # Reshaping images to preferred size
+            
+            # Affectation de la catégorie en se basant sur le nom du fichier
+            cat = 0
+            category=f_name.split('\\')[-1]
+            category=category.split('.')[0]
+            # On affecte le bon code de label
+            for i in range(1, len(labels)):
+                if labels[i] in category:
+                    cat = i
+                    break
+            data.append([resized_arr, cat])
+        except Exception as e:
+            print(e)
+    return np.array(data, dtype=object)
+
+
+def get_dataset(path, image_size=(256, 256), batch_size = 32, color_mode='grayscale'):
+    return tf.keras.utils.image_dataset_from_directory(
+        path,
+        labels='inferred',
+        label_mode='int',
+        class_names=None,
+        color_mode=color_mode, # "grayscale", "rgb", "rgba"
+        image_size=image_size,
+        batch_size=batch_size,
+        shuffle=True,
+        seed=None,
+        validation_split=None,
+        subset=None,
+        interpolation='bilinear',
+        follow_links=False,
+        crop_to_aspect_ratio=False,
+    )
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #                                              FILES UTILITIES
@@ -294,7 +358,7 @@ def get_dir_files(dir_path, endwith=None, include_sub_dir=0, verbose=0):
                 for en in endwith:
                     fichiers.extends(get_dir_files(dir_path=dir_path, endwith=en, verbose=verbose))
         else:
-            fichiers = [f for f in listdir(dir_path) if isfile(join(dir_path, f))]
+            fichiers = [f for f in listdir(dir_path) if isfile(join(dir_path, f)) and not f.endswith("Thumbs.db")]
     return fichiers
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
