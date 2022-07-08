@@ -130,3 +130,4 @@ dmypy.json
 dataset/kagglecatsanddogs_5340.zip
 dataset/*
 model_check_point/*
+model/*
